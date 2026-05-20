@@ -680,6 +680,18 @@ namespace SpellFactionItemDistributor
 
 	void Manager::LoadForms()
 	{
+		allItemsConditional.clear();
+		applyToAllItems.clear();
+		allEquipmentConditional.clear();
+		applyToAllEquipment.clear();
+		allSpellsConditional.clear();
+		applyToAllSpells.clear();
+		allFactionsConditional.clear();
+		applyToAllFactions.clear();
+		allPackagesConditional.clear();
+		applyToAllPackages.clear();
+		allKeywordsConditional.clear();
+		applyToAllKeywords.clear();
 		_MESSAGE("-INI-");
 
 		std::string sfidFolderPath = R"(Data\OBSE\Plugins\SpellFactionItemDistributor)";

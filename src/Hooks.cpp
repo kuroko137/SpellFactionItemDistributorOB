@@ -67,9 +67,7 @@ namespace SpellFactionItemDistributor
 			SInt32 current = GetItemCount(ref, form);
 			if (current >= static_cast<SInt32>(amount))
 				return;
-			UInt32 toAdd = amount - current;
-			ref->AddItem(form, nullptr, toAdd);
-			ref->Equip(form, toAdd, nullptr, 0);
+			ref->AddItem(form, nullptr, amount - current);
 		}
 	}
 
