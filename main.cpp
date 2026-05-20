@@ -2,6 +2,7 @@
 #include "src/Manager.h"
 #include "EditorIDMapper/EditorIDMapperAPI.h"
 #include "OBSEKeywords/KeywordAPI.h"
+#include "lib/crc.hpp"
 
 IDebugLog		gLog("SpellFactionItemDistributor.log");
 PluginHandle	g_pluginHandle = kPluginHandle_Invalid;
@@ -36,6 +37,7 @@ void UnifiedMessageHandler(OBSEMessagingInterface::Message* msg)
 
 // co-save serialization
 static constexpr UInt32 kChunk_ProcessedForms = 'PRFM';
+static constexpr UInt32 kChunk_ConfigCRC = 'CRCF';
 static constexpr UInt32 kChunkVersion = 1;
 
 void SaveCallback(void*)
@@ -43,6 +45,11 @@ void SaveCallback(void*)
 	auto* mgr = SpellFactionItemDistributor::Manager::GetSingleton();
 	auto* intfc = g_serializationInterface;
 	if (!intfc) return;
+
+	uint64_t currentCRC = crc::ConfigFolderCRC(
+		std::filesystem::path(R"(Data\OBSE\Plugins\SpellFactionItemDistributor)"));
+	intfc->OpenRecord(kChunk_ConfigCRC, kChunkVersion);
+	intfc->WriteRecordData(&currentCRC, sizeof(currentCRC));
 
 	UInt32 count = 0;
 	for (UInt32 refID : mgr->processedForms) {
@@ -69,9 +76,15 @@ void LoadCallback(void* reserved)
 	auto* intfc = g_serializationInterface;
 	if (!intfc) return;
 
+	uint64_t savedCRC = 0;
+
 	UInt32 type, version, length;
 	while (intfc->GetNextRecordInfo(&type, &version, &length)) {
-		if (type == kChunk_ProcessedForms) {
+		if (type == kChunk_ConfigCRC) {
+			intfc->ReadRecordData(&savedCRC, sizeof(savedCRC));
+			_MESSAGE("SFID LoadCallback: read config CRC %016llX", savedCRC);
+		}
+		else if (type == kChunk_ProcessedForms) {
 			UInt32 count;
 			intfc->ReadRecordData(&count, sizeof(count));
 			UInt32 loaded = 0;
@@ -86,6 +99,23 @@ void LoadCallback(void* reserved)
 	}
 	_MESSAGE("SFID LoadCallback: processedForms now has %zu entries",
 		mgr->processedForms.size());
+
+	uint64_t currentCRC = crc::ConfigFolderCRC(
+		std::filesystem::path(R"(Data\OBSE\Plugins\SpellFactionItemDistributor)"));
+	if (currentCRC == 0) {
+		currentCRC = crc::ConfigFolderCRC(
+			std::filesystem::path(R"(Data\SpellFactionItemDistributor)"));
+	}
+
+	if (savedCRC != 0 && currentCRC != savedCRC) {
+		_MESSAGE("SFID: Config changed (CRC %016llX -> %016llX), clearing processedForms and resetting init",
+			savedCRC, currentCRC);
+		mgr->processedForms.clear();
+		mgr->ResetInit();
+	}
+	else {
+		_MESSAGE("SFID: Config unchanged (CRC %016llX), keeping processedForms", currentCRC);
+	}
 }
 
 

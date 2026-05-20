@@ -3,6 +3,7 @@
 #include <variant>
 #include <string>
 #include <ranges>
+#include <atomic>
 #include <unordered_set>
 #include <unordered_map>
 

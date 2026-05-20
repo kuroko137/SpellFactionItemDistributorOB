@@ -112,6 +112,7 @@ namespace SpellFactionItemDistributor
 			const std::string& formType);
 
 		std::unordered_set<UInt32> processedForms;
+		uint64_t savedConfigCRC{ 0 };
 
 	private:
 		Manager() = default;
@@ -173,6 +174,11 @@ namespace SpellFactionItemDistributor
 		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};
 
 		bool hasConflicts{ false };
-		std::once_flag init{};
+		std::atomic<bool> formsLoaded{ false };
+
+	public:
+		void ResetInit() { formsLoaded.store(false, std::memory_order_release); }
+
+	private:
 	};
 }

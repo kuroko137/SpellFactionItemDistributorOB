@@ -17,8 +17,45 @@ namespace SpellFactionItemDistributor
 		return entry ? entry->countDelta : 0;
 	}
 
+	static bool HasSpell(TESActorBase* npc, SpellItem* spell) {
+		TESSpellList::Entry* entry = &npc->spellList.spellList;
+		while (entry) {
+			if (entry->type == spell) return true;
+			entry = entry->Next();
+		}
+		entry = &npc->spellList.leveledSpellList;
+		while (entry) {
+			if (entry->type == spell) return true;
+			entry = entry->Next();
+		}
+		return false;
+	}
+
+	static bool HasFaction(TESActorBase* npc, TESFaction* faction) {
+		auto* entry = &npc->actorBaseData.factionList;
+		while (entry && entry->data) {
+			if (entry->data->faction == faction) return true;
+			entry = entry->Next();
+		}
+		return false;
+	}
+
+	static bool HasPackage(TESActorBase* npc, TESPackage* package) {
+		TESAIForm::PackageEntry* entry = &npc->aiForm.packageList;
+		while (entry) {
+			if (entry->package == package) return true;
+			entry = entry->Next();
+		}
+		return false;
+	}
+
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
-		ref->AddItem(form, nullptr, amount);
+		if (ref && form) {
+			SInt32 current = GetItemCount(ref, form);
+			if (current >= static_cast<SInt32>(amount))
+				return;
+			ref->AddItem(form, nullptr, amount - current);
+		}
 	}
 
 	static void RemoveItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -26,8 +63,14 @@ namespace SpellFactionItemDistributor
 	}
 
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
-		ref->AddItem(form, nullptr, amount);
-		ref->Equip(form, amount, nullptr, 0);
+		if (ref && form) {
+			SInt32 current = GetItemCount(ref, form);
+			if (current >= static_cast<SInt32>(amount))
+				return;
+			UInt32 toAdd = amount - current;
+			ref->AddItem(form, nullptr, toAdd);
+			ref->Equip(form, toAdd, nullptr, 0);
+		}
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -49,6 +92,8 @@ namespace SpellFactionItemDistributor
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
 		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
 		SpellItem* spell = OBLIVION_CAST(form, TESForm, SpellItem);
+		if (spell && HasSpell(npc, spell))
+			return;
 		ThisStdCall(0x46F350, &npc->spellList, spell);
 		ThisStdCall(0x46ABF0, &npc->spellList, TESSpellList::kModified_BaseSpellList);
 	}
@@ -61,6 +106,8 @@ namespace SpellFactionItemDistributor
 		TESLeveledList* lev = OBLIVION_CAST(form, TESForm, TESLeveledList);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
 		SpellItem* spell = OBLIVION_CAST(newForm, TESForm, SpellItem);
+		if (spell && HasSpell(npc, spell))
+			return;
 		ThisStdCall(0x46F350, &(npc->spellList), TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref->baseForm, TESSpellList::kModified_BaseSpellList);
@@ -69,6 +116,8 @@ namespace SpellFactionItemDistributor
 	static void AddToFaction(TESObjectREFR* ref, TESForm* form) {
 		TESActorBase* npc = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
 		TESFaction* faction = OBLIVION_CAST(form, TESForm, TESFaction);
+		if (!npc || !faction || HasFaction(npc, faction))
+			return;
 		ThisStdCall(0x4675E0, &(npc->actorBaseData), faction, 1);
 		ThisStdCall(0x4672F0, &(npc->actorBaseData), TESActorBaseData::kModified_BaseFactions);
 	}
@@ -76,6 +125,8 @@ namespace SpellFactionItemDistributor
 	static void AddPackage(TESObjectREFR* ref, TESForm* form) {
 		TESActorBase* npc = dynamic_cast<TESActorBase*>(ref->baseForm);
 		TESPackage* package = dynamic_cast<TESPackage*>(form);
+		if (!npc || !package || HasPackage(npc, package))
+			return;
 		TESAIForm::PackageEntry* newPackageData = (TESAIForm::PackageEntry*)FormHeap_Allocate(sizeof(TESAIForm::PackageEntry));
 		newPackageData->package = package;
 		newPackageData->next = nullptr;
@@ -112,12 +163,6 @@ namespace SpellFactionItemDistributor
 		if ((a_ref->refID >> 24) == 0xFF && formToAdd) {
 			if (a_ref->IsDead(true))
 				return;
-			if (IsItemFormType(formToAdd->GetFormType())
-				&& formToAdd->GetFormType() != FormType::kFormType_LeveledItem)
-			{
-				if (GetItemCount(a_ref, formToAdd) >= static_cast<SInt32>(amount))
-					return;
-			}
 		}
 		auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
 		if (chance != 100) {
@@ -194,8 +239,10 @@ namespace SpellFactionItemDistributor
 		{
 			for (const auto& keyword : swapData.keywords)
 			{
-				bool add1 = KeywordAPI::AddKeyword(ref->refID, keyword.c_str());
-				bool add2 = KeywordAPI::AddKeyword(ref->baseForm->refID, keyword.c_str());
+				if (!KeywordAPI::HasKeyword(ref->refID, keyword.c_str()))
+					KeywordAPI::AddKeyword(ref->refID, keyword.c_str());
+				if (!KeywordAPI::HasKeyword(ref->baseForm->refID, keyword.c_str()))
+					KeywordAPI::AddKeyword(ref->baseForm->refID, keyword.c_str());
 			}
 		}
 		if (std::holds_alternative<UInt32>(swapData.formToAdd)) {

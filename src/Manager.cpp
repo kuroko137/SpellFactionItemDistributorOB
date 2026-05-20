@@ -672,9 +672,10 @@ namespace SpellFactionItemDistributor
 
 	void Manager::LoadFormsOnce()
 	{
-		std::call_once(init, [this] {
+		bool expected = false;
+		if (formsLoaded.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
 			LoadForms();
-			});
+		}
 	}
 
 	void Manager::LoadForms()
@@ -987,11 +988,6 @@ namespace SpellFactionItemDistributor
 	{
 		auto& allFormsConditional = get_form_map(formType);
 
-		DistributeRecordData empty;
-		std::vector<SFIDResult> emptyResult;
-		if (const auto it = processedForms.find(a_ref->refID); it != processedForms.end()) {
-			return emptyResult;
-		}
 		std::vector<SFIDResult> sfidResult;
 		sfidResult = GetBaseAll(a_ref, a_base, allFormsConditional, formType);
 		return sfidResult;
