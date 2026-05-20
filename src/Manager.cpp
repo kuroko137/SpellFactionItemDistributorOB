@@ -1030,4 +1030,50 @@ namespace SpellFactionItemDistributor
 
 		return resultVec;
 	}
+
+	void Manager::QueueEquip(UInt32 refID, UInt32 formID)
+	{
+		pendingEquips.emplace(refID, formID);
+	}
+
+	void Manager::ProcessEquips(TESObjectREFR* a_ref)
+	{
+		if (!a_ref) return;
+		auto [begin, end] = pendingEquips.equal_range(a_ref->refID);
+		if (begin == end) return;
+
+		std::vector<UInt32> toEquip;
+		for (auto it = begin; it != end; ++it)
+			toEquip.push_back(it->second);
+		pendingEquips.erase(begin, end);
+
+		for (UInt32 formID : toEquip) {
+			if (auto* form = LookupFormByID(formID)) {
+				a_ref->Equip(form, 1, nullptr, 0);
+			}
+		}
+	}
+
+	void Manager::ProcessAllEquips()
+	{
+		if (pendingEquips.empty()) return;
+
+		auto snapshot = std::move(pendingEquips);
+		pendingEquips = {};
+
+		for (auto& [refID, formID] : snapshot) {
+			TESForm* refForm = LookupFormByID(refID);
+			TESObjectREFR* ref = refForm
+				? OBLIVION_CAST(refForm, TESForm, TESObjectREFR)
+				: nullptr;
+			if (!ref || !ref->GetNiNode()) {
+				pendingEquips.emplace(refID, formID);
+				continue;
+			}
+			auto* form = LookupFormByID(formID);
+			if (form) {
+				ref->Equip(form, 1, nullptr, 0);
+			}
+		}
+	}
 }

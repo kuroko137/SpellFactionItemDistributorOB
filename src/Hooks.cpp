@@ -68,6 +68,7 @@ namespace SpellFactionItemDistributor
 			if (current >= static_cast<SInt32>(amount))
 				return;
 			ref->AddItem(form, nullptr, amount - current);
+			Manager::GetSingleton()->QueueEquip(ref->refID, form->refID);
 		}
 	}
 
@@ -351,6 +352,25 @@ namespace SpellFactionItemDistributor
 		return originalFunction;
 	}
 
+	static constexpr UInt32 kMainLoopHookAddr = 0x0040F19D;
+	static UInt32 originalMainLoopHook = 0;
+
+	static void HandleSFIDMainLoop()
+	{
+		Manager::GetSingleton()->ProcessAllEquips();
+	}
+
+	static __declspec(naked) void MainLoopChainHook()
+	{
+		__asm
+		{
+			pushad
+			call    HandleSFIDMainLoop
+			popad
+			jmp     [originalMainLoopHook]
+		}
+	}
+
 	void Install()
 	{
 		if (!g_hooksInstalled)
@@ -359,7 +379,9 @@ namespace SpellFactionItemDistributor
 			originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
 			//originalAddressNPC = DetourVtable(0xA6E1C0, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
 			originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
-			_MESSAGE("Installed all vtable hooks");
+			originalMainLoopHook = 0x0040F1A2 + *(UInt32*)(kMainLoopHookAddr + 1);
+			WriteRelJump(kMainLoopHookAddr, (UInt32)&MainLoopChainHook);
+			_MESSAGE("Installed all hooks");
 			g_hooksInstalled = true;
 		}
 

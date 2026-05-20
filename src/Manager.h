@@ -114,6 +114,11 @@ namespace SpellFactionItemDistributor
 		std::unordered_set<UInt32> processedForms;
 		uint64_t savedConfigCRC{ 0 };
 
+		void QueueEquip(UInt32 refID, UInt32 formID);
+		void ProcessEquips(TESObjectREFR* a_ref);
+		void ProcessAllEquips();
+		void ClearPendingEquips() { pendingEquips.clear(); }
+
 	private:
 		Manager() = default;
 		~Manager() = default;
@@ -171,6 +176,7 @@ namespace SpellFactionItemDistributor
 		ConditionalFormMap applyToAllKeywords{};
 
 
+		std::unordered_multimap<UInt32, UInt32> pendingEquips;
 		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};
 
 		bool hasConflicts{ false };

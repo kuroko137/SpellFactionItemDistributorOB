@@ -43,6 +43,7 @@ static constexpr UInt32 kChunkVersion = 1;
 void SaveCallback(void*)
 {
 	auto* mgr = SpellFactionItemDistributor::Manager::GetSingleton();
+	mgr->ClearPendingEquips();
 	auto* intfc = g_serializationInterface;
 	if (!intfc) return;
 
@@ -73,6 +74,7 @@ void SaveCallback(void*)
 void LoadCallback(void* reserved)
 {
 	auto* mgr = SpellFactionItemDistributor::Manager::GetSingleton();
+	mgr->ClearPendingEquips();
 	auto* intfc = g_serializationInterface;
 	if (!intfc) return;
 
