@@ -1,0 +1,4 @@
+LIBRARY	"SpellFactionItemDistributorOB"
+EXPORTS
+OBSEPlugin_Query
+OBSEPlugin_Load

@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="dllmain.c" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\Hooks.cpp" />
+    <ClCompile Include="src\Manager.cpp" />
+    <ClCompile Include="src\DistributeData.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="lib\detail\SimpleIni.h">
+      <Filter>lib\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\detail\XoshiroCpp.hpp">
+      <Filter>lib\detail</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\distribution.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\hash.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\numeric.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\string.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\simpleINI.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\rng.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\srell.hpp">
+      <Filter>lib</Filter>
+    </ClInclude>
+    <ClInclude Include="lib\boost\trim.hpp">
+      <Filter>lib\boost</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Defs.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\DistributeData.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Hooks.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Manager.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\EditorIDMapper\EditorIDMapperAPI.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OBSEKeywords\KeywordAPI.h">
+      <Filter>include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="exports.def" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="lib">
+      <UniqueIdentifier>{1b8b5364-5bf6-44f7-8ee3-dd103d45a526}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib\detail">
+      <UniqueIdentifier>{569b02dc-0dfc-47b5-b66a-a49e6ba1bc08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="lib\boost">
+      <UniqueIdentifier>{a1c149af-0776-4747-8770-7636347f2ff5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include">
+      <UniqueIdentifier>{7def82b5-cd60-4eb4-86ff-f69b1ce4ab0b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
