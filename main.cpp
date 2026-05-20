@@ -34,6 +34,62 @@ void UnifiedMessageHandler(OBSEMessagingInterface::Message* msg)
 	KeywordAPI::MessageHandler(msg);
 }
 
+// co-save serialization
+static constexpr UInt32 kChunk_ProcessedForms = 'PRFM';
+static constexpr UInt32 kChunkVersion = 1;
+
+void SaveCallback(void*)
+{
+	auto* mgr = SpellFactionItemDistributor::Manager::GetSingleton();
+	auto* intfc = g_serializationInterface;
+	if (!intfc) return;
+
+	UInt32 count = 0;
+	for (UInt32 refID : mgr->processedForms) {
+		if ((refID >> 24) != 0xFF) count++;
+	}
+	if (count == 0) {
+		_MESSAGE("SFID SaveCallback: processedForms empty, nothing written");
+		return;
+	}
+
+	intfc->OpenRecord(kChunk_ProcessedForms, kChunkVersion);
+	intfc->WriteRecordData(&count, sizeof(count));
+	for (UInt32 refID : mgr->processedForms) {
+		if ((refID >> 24) != 0xFF) {
+			intfc->WriteRecordData(&refID, sizeof(refID));
+		}
+	}
+	_MESSAGE("SFID SaveCallback: wrote %d refIDs", count);
+}
+
+void LoadCallback(void* reserved)
+{
+	auto* mgr = SpellFactionItemDistributor::Manager::GetSingleton();
+	auto* intfc = g_serializationInterface;
+	if (!intfc) return;
+
+	UInt32 type, version, length;
+	while (intfc->GetNextRecordInfo(&type, &version, &length)) {
+		if (type == kChunk_ProcessedForms) {
+			UInt32 count;
+			intfc->ReadRecordData(&count, sizeof(count));
+			UInt32 loaded = 0;
+			for (UInt32 i = 0; i < count; i++) {
+				UInt32 refID;
+				intfc->ReadRecordData(&refID, sizeof(refID));
+				mgr->processedForms.emplace(refID);
+				loaded++;
+			}
+			_MESSAGE("SFID LoadCallback: loaded %d refIDs from co-save", loaded);
+		}
+	}
+	_MESSAGE("SFID LoadCallback: processedForms now has %zu entries",
+		mgr->processedForms.size());
+}
+
+
+
 bool OBSEPlugin_Query(const OBSEInterface* OBSE, PluginInfo* info)
 {
 	// fill out the info structure
@@ -77,6 +133,8 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 	g_messagingInterface = static_cast<OBSEMessagingInterface*>(OBSE->QueryInterface(kInterface_Messaging));
 	g_messagingInterface->RegisterListener(g_pluginHandle, "OBSE", MessageHandler);
 
+	OBSE->SetOpcodeBase(0x2770);
+
 	if (!OBSE->isEditor)
 	{
 #if OBLIVION
@@ -86,6 +144,11 @@ bool OBSEPlugin_Load(OBSEInterface* OBSE)
 		g_eventInterface = static_cast<OBSEEventManagerInterface*>(OBSE->QueryInterface(kInterface_EventManager));
 		g_serializationInterface = static_cast<OBSESerializationInterface*>(OBSE->QueryInterface(kInterface_Serialization));
 		g_consoleInterface = static_cast<OBSEConsoleInterface*>(OBSE->QueryInterface(kInterface_Console));
+
+		if (g_serializationInterface) {
+			g_serializationInterface->SetSaveCallback(g_pluginHandle, SaveCallback);
+			g_serializationInterface->SetPreloadCallback(g_pluginHandle, LoadCallback);
+		}
 #endif
 	}
 

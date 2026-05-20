@@ -12,7 +12,7 @@ namespace SpellFactionItemDistributor
 		if (formString == "Forms") return form;
 		if (formString == "Spells") return spell;
 		if (formString == "Factions") return faction;
-		if (formString == "Equipment") return equippable;
+		if (formString == "Equipment" || formString == "Equippables") return equippable;
 		if (formString == "Packages") return package;
 		if (formString == "Items") return item;
 		if (formString == "Keywords") return keyword;
@@ -982,34 +982,6 @@ namespace SpellFactionItemDistributor
 		return results;
 	}
 
-
-	void Manager::LoadCache() {
-		LoadFormsOnce();
-		std::string formLine;
-		std::ifstream idCache;
-		idCache.open("SFIDCache.txt");
-		while (std::getline(idCache, formLine)) {
-			std::stringstream stringStream;
-			stringStream << std::hex << formLine;
-			UInt32 formID;
-			stringStream >> formID;
-			cachedForms.emplace(formID);
-		}
-		idCache.close();
-	}
-
-	void Manager::AddToCache(TESObjectREFR* ref)
-	{
-		if (const auto it = cachedForms.find(ref->refID); it == cachedForms.end()) {
-			cachedForms.emplace(ref->refID);
-			std::string formString = std::to_string(ref->refID) + "\n";
-			std::fstream idCache;
-			idCache.open("SFIDCache.txt", std::ios_base::binary | std::ios_base::app);
-			idCache << std::hex << ref->refID;
-			idCache << '\n';
-			idCache.close();
-		}
-	}
 
 	std::vector<SFIDResult> Manager::GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType)
 	{

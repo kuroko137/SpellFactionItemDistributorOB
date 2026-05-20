@@ -111,11 +111,7 @@ namespace SpellFactionItemDistributor
 			const ConditionalFormMap& conditionalForms,
 			const std::string& formType);
 
-		void LoadCache();
-		short loadCounter;
-		void AddToCache(TESObjectREFR* ref);
 		std::unordered_set<UInt32> processedForms;
-		std::unordered_set<UInt32> cachedForms;
 
 	private:
 		Manager() = default;

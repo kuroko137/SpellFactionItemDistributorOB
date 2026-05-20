@@ -8,9 +8,13 @@ namespace SpellFactionItemDistributor
 {
 	bool g_hooksInstalled = false;
 
-	static void AddToCache(TESObjectREFR* ref) {
-		Manager* manager = Manager::GetSingleton();
-		manager->AddToCache(ref);
+	static SInt32 GetItemCount(TESObjectREFR* ref, TESForm* form)
+	{
+		if (!ref || !form) return 0;
+		ExtraContainerChanges* xChanges = static_cast<ExtraContainerChanges*>(ref->baseExtraList.GetByType(kExtraData_ContainerChanges));
+		if (!xChanges || !xChanges->data) return 0;
+		auto* entry = xChanges->GetByType(form);
+		return entry ? entry->countDelta : 0;
 	}
 
 	static void AddMiscItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
@@ -72,16 +76,49 @@ namespace SpellFactionItemDistributor
 	static void AddPackage(TESObjectREFR* ref, TESForm* form) {
 		TESActorBase* npc = dynamic_cast<TESActorBase*>(ref->baseForm);
 		TESPackage* package = dynamic_cast<TESPackage*>(form);
-		PackageListVisitor newVisitor = PackageListVisitor(&npc->aiForm.packageList);
 		TESAIForm::PackageEntry* newPackageData = (TESAIForm::PackageEntry*)FormHeap_Allocate(sizeof(TESAIForm::PackageEntry));
 		newPackageData->package = package;
-		newPackageData->next = NULL;
-		newVisitor.Append(newPackageData);
+		newPackageData->next = nullptr;
+		TESAIForm::PackageEntry* last = &npc->aiForm.packageList;
+		while (last->next) last = last->next;
+		last->next = newPackageData;
 		ThisStdCall(0x46ABF0, ref, TESAIForm::kModified_BaseAIData);
 	}
 
 
+	static bool IsItemFormType(UInt32 formType)
+	{
+		switch (formType)
+		{
+		case FormType::kFormType_Misc:
+		case FormType::kFormType_AlchemyItem:
+		case FormType::kFormType_SoulGem:
+		case FormType::kFormType_Apparatus:
+		case FormType::kFormType_Book:
+		case FormType::kFormType_Ingredient:
+		case FormType::kFormType_Key:
+		case FormType::kFormType_Armor:
+		case FormType::kFormType_Weapon:
+		case FormType::kFormType_Ammo:
+		case FormType::kFormType_Clothing:
+		case FormType::kFormType_LeveledItem:
+			return true;
+		default:
+			return false;
+		}
+	}
+
 	static void AddForms(TESObjectREFR* a_ref, TESForm* formToAdd, UInt32 amount, UInt32 chance, bool trueRandom) {
+		if ((a_ref->refID >> 24) == 0xFF && formToAdd) {
+			if (a_ref->IsDead(true))
+				return;
+			if (IsItemFormType(formToAdd->GetFormType())
+				&& formToAdd->GetFormType() != FormType::kFormType_LeveledItem)
+			{
+				if (GetItemCount(a_ref, formToAdd) >= static_cast<SInt32>(amount))
+					return;
+			}
+		}
 		auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
 		if (chance != 100) {
 			const auto rng = trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
@@ -196,9 +233,11 @@ namespace SpellFactionItemDistributor
 			manager->LoadFormsOnce();
 			if (manager->processedForms.contains(a_ref->refID))
 			{
+				_MESSAGE("SFID hook: SKIP NPC %08X (already processed)", a_ref->refID);
 				ThisStdCall(originalAddressNPC, a_ref);
 				return;
 			}
+			_MESSAGE("SFID hook: PROCESS NPC %08X", a_ref->refID);
 			//Distribute keywords first
 			std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
 			for (SFIDResult keyword : keywordResult)
@@ -218,7 +257,6 @@ namespace SpellFactionItemDistributor
 				}
 			}
 			manager->processedForms.emplace(a_ref->refID);
-			//AddToCache(a_ref);
 		}
 		ThisStdCall(originalAddressNPC, a_ref);
 	}
@@ -256,7 +294,6 @@ namespace SpellFactionItemDistributor
 				}
 			}
 			manager->processedForms.emplace(a_ref->refID);
-			//AddToCache(a_ref);
 		}
 		ThisStdCall(originalAddressCREA, a_ref);
 	}
