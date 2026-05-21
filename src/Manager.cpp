@@ -745,71 +745,81 @@ namespace SpellFactionItemDistributor
 				};
 
 			for (auto& [section, comment, keyOrder] : sections) {
-				std::vector<std::string> conditions;
+				std::vector<std::vector<CompiledCondition>> orGroups;
 				std::vector<std::string> splitSection = string::split(section, "|");
 				if (string::icontains(section, "|")) {
 					boost::trim(splitSection[1]);
-					conditions = string::split(splitSection[1], ",");  //[Forms|EditorID,EditorID2]
-					_MESSAGE("\t\treading [%s] : %u conditions", splitSection[0].c_str(), conditions.size());
-				}
+					std::vector<std::string> orParts = string::split(splitSection[1], ",");
+					_MESSAGE("\t\treading [%s] : %u OR groups", splitSection[0].c_str(), orParts.size());
 
-				std::vector<CompiledCondition> processedConditions;
-				processedConditions.reserve(conditions.size());
-				for (auto& condition : conditions) {
-					push_filter(condition, processedConditions);
-				}
-
-				CSimpleIniA::TNamesDepend values;
-				ini.GetAllKeys(section, values);
-				values.sort(CSimpleIniA::Entry::LoadOrder());
-				if (splitSection[0] == "Items") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u items found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
+					for (auto& orPart : orParts) {
+						std::vector<std::string> andParts = string::split(orPart, "&");
+						std::vector<CompiledCondition> andConditions;
+						andConditions.reserve(andParts.size());
+						for (auto& andPart : andParts) {
+							push_filter(andPart, andConditions);
 						}
+						orGroups.push_back(std::move(andConditions));
 					}
 				}
-				else if (splitSection[0] == "Equipment" || splitSection[0] == "Equippables") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u equippables found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Spells") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u spells found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Factions") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u factions found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Packages") {
-					if (!values.empty()) {
-						_MESSAGE("\t\t\t%u packages found", values.size());
-						for (const auto& key : values) {
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
-						}
-					}
-				}
-				else if (splitSection[0] == "Keywords")
+				else
 				{
-					if (!values.empty())
+					orGroups.emplace_back();
+				}
+
+				for (const auto& andConditions : orGroups) {
+					CSimpleIniA::TNamesDepend values;
+					ini.GetAllKeys(section, values);
+					values.sort(CSimpleIniA::Entry::LoadOrder());
+					if (splitSection[0] == "Items") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u items found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Equipment" || splitSection[0] == "Equippables") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u equippables found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Spells") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u spells found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Factions") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u factions found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Packages") {
+						if (!values.empty()) {
+							_MESSAGE("\t\t\t%u packages found", values.size());
+							for (const auto& key : values) {
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
+						}
+					}
+					else if (splitSection[0] == "Keywords")
 					{
-						_MESSAGE("\t\t\t%u keywords found", values.size());
-						for (const auto& key : values)
+						if (!values.empty())
 						{
-							get_forms(path, key.pItem, processedConditions, splitSection[0]);
+							_MESSAGE("\t\t\t%u keywords found", values.size());
+							for (const auto& key : values)
+							{
+								get_forms(path, key.pItem, andConditions, splitSection[0]);
+							}
 						}
 					}
 				}
