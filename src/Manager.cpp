@@ -541,6 +541,31 @@ namespace SpellFactionItemDistributor
 	}
 
 
+	static bool HasKeywordSex(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		auto* npc = dynamic_cast<TESNPC*>(actor);
+		if (!npc)
+			return false;
+
+		bool isFemale = npc->actorBaseData.IsFemale();
+
+		bool match = false;
+		if (cond.text == "female")
+			match = isFemale;
+		else if (cond.text == "male")
+			match = !isFemale;
+
+		return cond.isExclusion ? !match : match;
+	}
+
 	static bool HasKeywordActorType(TESObjectREFR* ref,
 		const CompiledCondition& cond)
 	{
@@ -606,6 +631,9 @@ namespace SpellFactionItemDistributor
 
 		case ConditionType::Keyword:
 			return HasKeywordKeyword(ref, cond);
+
+		case ConditionType::Sex:
+			return HasKeywordSex(ref, cond);
 
 		default:
 			return false;
@@ -683,6 +711,7 @@ namespace SpellFactionItemDistributor
 		else if (typeStr == "mod")      compiled.type = ConditionType::Mod;
 		else if (typeStr == "editorid")      compiled.type = ConditionType::EditorID;
 		else if (typeStr == "keyword")      compiled.type = ConditionType::Keyword;
+		else if (typeStr == "sex")         compiled.type = ConditionType::Sex;
 		else if (typeStr == "actortype")   compiled.type = ConditionType::ActorType;
 		else                            compiled.type = ConditionType::EditorID;
 
