@@ -100,7 +100,7 @@ namespace SpellFactionItemDistributor
 
 		void            PrintConflicts() const;
 		std::vector<SFIDResult>      GetSingleSwapData(TESObjectREFR* a_ref, TESForm* a_base, std::string formType);
-		std::vector<std::vector<SFIDResult>> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base);
+		std::vector<std::vector<SFIDResult>> GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base, bool a_skipItemsAndEquipment = false);
 		SFIDResult GetConditionalBase(
 			TESObjectREFR* a_ref,
 			TESForm* a_base,

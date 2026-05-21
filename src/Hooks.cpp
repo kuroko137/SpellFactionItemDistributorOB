@@ -290,7 +290,8 @@ namespace SpellFactionItemDistributor
 				ThisStdCall(originalAddressNPC, a_ref);
 				return;
 			}
-			_MESSAGE("SFID hook: PROCESS NPC %08X", a_ref->refID);
+			bool isCloned = IsClonedForm(base->refID);
+			_MESSAGE("SFID hook: PROCESS NPC %08X (isCloned=%d)", a_ref->refID, isCloned);
 			//Distribute keywords first
 			std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
 			for (SFIDResult keyword : keywordResult)
@@ -303,7 +304,7 @@ namespace SpellFactionItemDistributor
 				ProcessResult(faction);
 			}
 			//Distribute factions and keywords again along with the rest
-			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base);
+			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base, isCloned);
 			for (std::vector<SFIDResult> result : resultVec) {
 				for (SFIDResult sfid : result) {
 					ProcessResult(sfid);
@@ -325,6 +326,8 @@ namespace SpellFactionItemDistributor
 			ThisStdCall(originalAddressCREA, a_ref);
 			return;
 		}
+		bool isCloned = IsClonedForm(base->refID);
+		_MESSAGE("SFID hook: PROCESS CREA %08X (isCloned=%d)", a_ref->refID, isCloned);
 		//Distribute keywords first
 		std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
 			for (SFIDResult keyword : keywordResult)
@@ -338,7 +341,7 @@ namespace SpellFactionItemDistributor
 				ProcessResult(faction);
 			}
 			//Distribute factions again along with the rest
-			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base);
+			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base, isCloned);
 			for (std::vector<SFIDResult> result : resultVec)
 			{
 				for (SFIDResult sfid : result)

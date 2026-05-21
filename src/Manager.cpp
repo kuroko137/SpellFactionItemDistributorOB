@@ -1074,16 +1074,16 @@ namespace SpellFactionItemDistributor
 		return sfidResult;
 	}
 
-	std::vector<std::vector<SFIDResult>> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base) {
+	std::vector<std::vector<SFIDResult>> Manager::GetAllSwapData(TESObjectREFR* a_ref, TESForm* a_base, bool a_skipItemsAndEquipment) {
 		std::vector<std::vector<SFIDResult>> resultVec;
 		resultVec.reserve(5);
 		if (allFactionsConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Factions"));
 		}
-		if (allItemsConditional.size() > 0) {
+		if (!a_skipItemsAndEquipment && allItemsConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Items"));
 		}
-		if (allEquipmentConditional.size() > 0) {
+		if (!a_skipItemsAndEquipment && allEquipmentConditional.size() > 0) {
 			resultVec.push_back(GetSingleSwapData(a_ref, a_base, "Equipment"));
 		}
 		if (allSpellsConditional.size() > 0) {
