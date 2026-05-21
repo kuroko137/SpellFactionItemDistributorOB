@@ -320,7 +320,11 @@ namespace SpellFactionItemDistributor
 		if (!ref)
 			return false;
 
-		auto* npc = static_cast<TESNPC*>(ref->baseForm);
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		auto* npc = dynamic_cast<TESNPC*>(actor);
 		if (!npc || !npc->race.race)
 			return false;
 
@@ -351,7 +355,11 @@ namespace SpellFactionItemDistributor
 		if (!ref)
 			return false;
 
-		auto* npc = static_cast<TESNPC*>(ref->baseForm);
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		auto* npc = dynamic_cast<TESNPC*>(actor);
 		if (!npc)
 			return false;
 
