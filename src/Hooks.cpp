@@ -67,7 +67,25 @@ namespace SpellFactionItemDistributor
 			SInt32 current = GetItemCount(ref, form);
 			if (current >= static_cast<SInt32>(amount))
 				return;
+
+			bool isCreature = false;
+			if (ref->baseForm) {
+				UInt32 type = ref->baseForm->GetFormType();
+				if (type == FormType::kFormType_Creature || type == FormType::kFormType_LeveledCreature)
+					isCreature = true;
+			}
+
+			if (isCreature && form->GetFormType() == FormType::kFormType_Armor) {
+				auto* armor = static_cast<TESObjectARMO*>(form);
+				if (armor->bipedModel.partMask & (1 << TESBipedModelForm::kPart_Shield))
+					return;
+			}
+
 			ref->AddItem(form, nullptr, amount - current);
+
+			if (isCreature)
+				return;
+
 			Manager::GetSingleton()->QueueEquip(ref->refID, form->refID);
 		}
 	}
