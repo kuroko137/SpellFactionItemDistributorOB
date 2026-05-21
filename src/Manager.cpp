@@ -1070,6 +1070,13 @@ namespace SpellFactionItemDistributor
 				pendingEquips.emplace(refID, formID);
 				continue;
 			}
+			// Engine bug: EquipItem on a creature duplicates its 3D nodes,
+			// causing random combat crashes. Items are already in inventory.
+			if (ref->baseForm) {
+				UInt32 ft = ref->baseForm->GetFormType();
+				if (ft == kFormType_Creature || ft == kFormType_LeveledCreature)
+					continue;
+			}
 			auto* form = LookupFormByID(formID);
 			if (form) {
 				ref->Equip(form, 1, nullptr, 0);

@@ -64,6 +64,13 @@ namespace SpellFactionItemDistributor
 
 	static void AddEquipItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
 		if (ref && form) {
+			// Adding equipment items to creatures corrupts combat state
+			// (OBME magic effect processing crashes at sub_5F5D10).
+			if (ref->baseForm) {
+				UInt32 ft = ref->baseForm->GetFormType();
+				if (ft == kFormType_Creature || ft == kFormType_LeveledCreature)
+					return;
+			}
 			SInt32 current = GetItemCount(ref, form);
 			if (current >= static_cast<SInt32>(amount))
 				return;
@@ -313,13 +320,13 @@ namespace SpellFactionItemDistributor
 		if (const auto base = a_ref->baseForm)
 		{
 			manager->LoadFormsOnce();
-			if (manager->processedForms.contains(a_ref->refID))
-			{
-				ThisStdCall(originalAddressNPC, a_ref);
-				return;
-			}
-			//Distribute keywords first
-			std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
+		if (manager->processedForms.contains(a_ref->refID))
+		{
+			ThisStdCall(originalAddressCREA, a_ref);
+			return;
+		}
+		//Distribute keywords first
+		std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
 			for (SFIDResult keyword : keywordResult)
 			{
 				ProcessResult(keyword);
@@ -378,9 +385,15 @@ namespace SpellFactionItemDistributor
 			_MESSAGE("-HOOKS-");
 			originalAddressNPC = DetourVtable(0xA6FDE8, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
 			//originalAddressNPC = DetourVtable(0xA6E1C0, reinterpret_cast<UInt32>(GenerateNiNodeHookNPC)); // kVtbl_Character_GenerateNiNode
-			originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode temporarily disabled due to crashes
-			originalMainLoopHook = 0x0040F1A2 + *(UInt32*)(kMainLoopHookAddr + 1);
-			WriteRelJump(kMainLoopHookAddr, (UInt32)&MainLoopChainHook);
+			originalAddressCREA = DetourVtable(0xA71240, reinterpret_cast<UInt32>(GenerateNiNodeHookCREA)); // kVtbl_Creature_GenerateNiNode
+			if (*(UInt8*)kMainLoopHookAddr == 0xE9) {
+				originalMainLoopHook = 0x0040F1A2 + *(UInt32*)(kMainLoopHookAddr + 1);
+				WriteRelJump(kMainLoopHookAddr, (UInt32)&MainLoopChainHook);
+				_MESSAGE("Installed main loop hook, chaining to %08X", originalMainLoopHook);
+			}
+			else {
+				_MESSAGE("WARNING: MainLoop hook not found at %08X, deferred Equip disabled", kMainLoopHookAddr);
+			}
 			_MESSAGE("Installed all hooks");
 			g_hooksInstalled = true;
 		}
