@@ -359,13 +359,9 @@ namespace SpellFactionItemDistributor
 		if (!actor)
 			return false;
 
-		auto* npc = dynamic_cast<TESNPC*>(actor);
-		if (!npc)
-			return false;
-
 		bool match = false;
 
-		auto* entry = &npc->actorBaseData.factionList;
+		auto* entry = &actor->actorBaseData.factionList;
 
 		while (entry && entry->data)
 		{
