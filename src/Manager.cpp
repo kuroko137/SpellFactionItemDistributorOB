@@ -545,6 +545,28 @@ namespace SpellFactionItemDistributor
 	}
 
 
+	static bool HasKeywordActorType(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		auto* actor = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!actor)
+			return false;
+
+		bool isNPC = (dynamic_cast<TESNPC*>(actor) != nullptr);
+		bool isCreature = (dynamic_cast<TESCreature*>(actor) != nullptr);
+
+		bool match = false;
+		if (cond.text == "npc")
+			match = isNPC;
+		else if (cond.text == "creature")
+			match = isCreature;
+
+		return cond.isExclusion ? !match : match;
+	}
+
 	bool IsValid(const CompiledCondition& cond,
 		TESObjectREFR* ref)
 	{
@@ -552,6 +574,9 @@ namespace SpellFactionItemDistributor
 		{
 		case ConditionType::All:
 			return true;
+
+		case ConditionType::ActorType:
+			return HasKeywordActorType(ref, cond);
 
 		case ConditionType::Cell:
 			return HasKeywordCell(ref->parentCell, cond);
@@ -662,6 +687,7 @@ namespace SpellFactionItemDistributor
 		else if (typeStr == "mod")      compiled.type = ConditionType::Mod;
 		else if (typeStr == "editorid")      compiled.type = ConditionType::EditorID;
 		else if (typeStr == "keyword")      compiled.type = ConditionType::Keyword;
+		else if (typeStr == "actortype")   compiled.type = ConditionType::ActorType;
 		else                            compiled.type = ConditionType::EditorID;
 
 		if (UInt32 id = DistributeRecordData::GetFormID(valueStr.c_str()); id != 0)

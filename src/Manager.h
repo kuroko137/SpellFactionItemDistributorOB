@@ -28,6 +28,7 @@ namespace SpellFactionItemDistributor
 		Worldspace,
 		Region,
 		Keyword,
+		ActorType,
 		All
 	};
 
