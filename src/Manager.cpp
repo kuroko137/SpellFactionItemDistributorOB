@@ -17,6 +17,7 @@ namespace SpellFactionItemDistributor
 		if (formString == "Packages") return package;
 		if (formString == "Items") return item;
 		if (formString == "Keywords") return keyword;
+		return item;
 	}
 
 	FormMap<SwapDataVec>& Manager::get_form_vec(const std::string& a_str)
@@ -84,7 +85,7 @@ namespace SpellFactionItemDistributor
 			break;
 		}
 		default:
-			break;
+			return allItemsConditional;
 		}
 	}
 
@@ -118,7 +119,7 @@ namespace SpellFactionItemDistributor
 			break;
 		}
 		default:
-			break;
+			return applyToAllItems;
 		}
 	}
 
