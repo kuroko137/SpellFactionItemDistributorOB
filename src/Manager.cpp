@@ -541,7 +541,7 @@ namespace SpellFactionItemDistributor
 	}
 
 
-	static bool HasKeywordSex(TESObjectREFR* ref,
+	static bool HasKeywordTrait(TESObjectREFR* ref,
 		const CompiledCondition& cond)
 	{
 		if (!ref || !ref->baseForm)
@@ -552,16 +552,43 @@ namespace SpellFactionItemDistributor
 			return false;
 
 		auto* npc = dynamic_cast<TESNPC*>(actor);
-		if (!npc)
-			return false;
-
-		bool isFemale = npc->actorBaseData.IsFemale();
-
 		bool match = false;
-		if (cond.text == "female")
-			match = isFemale;
-		else if (cond.text == "male")
-			match = !isFemale;
+
+		if (cond.text == "female") {
+			match = npc && npc->actorBaseData.IsFemale();
+		}
+		else if (cond.text == "male") {
+			match = npc && !npc->actorBaseData.IsFemale();
+		}
+		else if (cond.text == "unique") {
+			match = npc
+				&& !npc->actorBaseData.IsRespawning()
+				&& (ref->refID >> 24) != 0xFF;
+		}
+		else if (cond.text == "summonable") {
+			match = npc && npc->actorBaseData.IsSummonable();
+		}
+		else if (cond.text == "leveled") {
+			match = npc && npc->actorBaseData.IsPCLevelOffset();
+		}
+		else if (cond.text == "teammate") {
+			auto* player = *g_thePlayer;
+			if (player) {
+				auto* xData = player->baseExtraList.GetByType(kExtraData_Follower);
+				if (xData) {
+					auto* xFollower = static_cast<ExtraFollower*>(xData);
+					for (auto* cur = xFollower->followers; cur; cur = cur->next) {
+						if (cur->character && cur->character->refID == ref->refID) {
+							match = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		else if (cond.text == "dead") {
+			match = ref->IsDead(true);
+		}
 
 		return cond.isExclusion ? !match : match;
 	}
@@ -632,8 +659,8 @@ namespace SpellFactionItemDistributor
 		case ConditionType::Keyword:
 			return HasKeywordKeyword(ref, cond);
 
-		case ConditionType::Sex:
-			return HasKeywordSex(ref, cond);
+		case ConditionType::Trait:
+			return HasKeywordTrait(ref, cond);
 
 		default:
 			return false;
@@ -711,7 +738,7 @@ namespace SpellFactionItemDistributor
 		else if (typeStr == "mod")      compiled.type = ConditionType::Mod;
 		else if (typeStr == "editorid")      compiled.type = ConditionType::EditorID;
 		else if (typeStr == "keyword")      compiled.type = ConditionType::Keyword;
-		else if (typeStr == "sex")         compiled.type = ConditionType::Sex;
+		else if (typeStr == "trait")       compiled.type = ConditionType::Trait;
 		else if (typeStr == "actortype")   compiled.type = ConditionType::ActorType;
 		else                            compiled.type = ConditionType::EditorID;
 

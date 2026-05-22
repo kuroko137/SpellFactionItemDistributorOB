@@ -39,7 +39,7 @@ namespace SpellFactionItemDistributor
 		Region,
 		Keyword,
 		ActorType,
-		Sex,
+		Trait,
 		All
 	};
 

@@ -180,10 +180,6 @@ namespace SpellFactionItemDistributor
 	}
 
 	static void AddForms(TESObjectREFR* a_ref, TESForm* formToAdd, UInt32 amount, UInt32 chance, bool trueRandom) {
-		if ((a_ref->refID >> 24) == 0xFF && formToAdd) {
-			if (a_ref->IsDead(true))
-				return;
-		}
 		auto seededRNG = SeedRNG(static_cast<std::uint32_t>(a_ref->refID));
 		if (chance != 100) {
 			const auto rng = trueRandom ? SeedRNG().Generate<std::uint32_t>(0, 100) :
