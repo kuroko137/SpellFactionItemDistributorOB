@@ -15,6 +15,16 @@ namespace SpellFactionItemDistributor
 		keyword
 	};
 
+	enum SectionType : uint8_t {
+		kItems      = 1 << 0,
+		kEquipment  = 1 << 1,
+		kSpells     = 1 << 2,
+		kFactions   = 1 << 3,
+		kPackages   = 1 << 4,
+		kKeywords   = 1 << 5,
+	};
+	static constexpr uint8_t kAllSections = 0x3F;
+
 	enum class ConditionType
 	{
 		EditorID,
@@ -114,6 +124,8 @@ namespace SpellFactionItemDistributor
 			const std::string& formType);
 
 		std::unordered_set<UInt32> processedForms;
+		std::unordered_map<UInt32, uint8_t> processedSections;
+		std::unordered_set<uint64_t> swappedLeveledItemRefs{};
 		uint64_t savedConfigCRC{ 0 };
 
 		void QueueEquip(UInt32 refID, UInt32 formID);
@@ -179,7 +191,6 @@ namespace SpellFactionItemDistributor
 
 
 		std::unordered_multimap<UInt32, UInt32> pendingEquips;
-		std::unordered_set<std::uint32_t> swappedLeveledItemRefs{};
 
 		bool hasConflicts{ false };
 		std::atomic<bool> formsLoaded{ false };

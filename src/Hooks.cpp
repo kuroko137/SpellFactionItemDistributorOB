@@ -80,19 +80,33 @@ namespace SpellFactionItemDistributor
 	}
 
 	static void AddLevItem(TESObjectREFR* ref, TESForm* form, UInt32 amount) {
+		auto* mgr = Manager::GetSingleton();
+		uint64_t key = (static_cast<uint64_t>(ref->refID) << 32) | form->refID;
+
+		if (mgr->swappedLeveledItemRefs.contains(key)) {
+			_MESSAGE("AddLevItem: SKIP %08X leveled %08X (already distributed)",
+				ref->refID, form->refID);
+			return;
+		}
+
 		TESActorBase* npc = dynamic_cast<TESActorBase*>(ref->baseForm);
+		if (!npc) return;
+
 		SInt16 level = npc->actorBaseData.level;
 		SInt16 maxLevel = npc->actorBaseData.maxLevel;
 		SInt16 minLevel = npc->actorBaseData.minLevel;
 		TESLeveledList* lev = dynamic_cast<TESLeveledList*>(form);
+		if (!lev) return;
+
 		short itr = amount;
 		while (itr > 0) {
 			TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
 			if (newForm) {
 				ref->AddItem(newForm, nullptr, 1);
 			}
-			itr = itr - 1;
+			itr--;
 		}
+		mgr->swappedLeveledItemRefs.emplace(key);
 	}
 
 	static void AddSingleSpell(TESObjectREFR* ref, TESForm* form) {
@@ -284,33 +298,94 @@ namespace SpellFactionItemDistributor
 		Manager* manager = Manager::GetSingleton();
 		if (const auto base = a_ref->baseForm) {
 			manager->LoadFormsOnce();
+
+			// === 高速パス：全セクション完了済み ===
 			if (manager->processedForms.contains(a_ref->refID))
 			{
-				_MESSAGE("SFID hook: SKIP NPC %08X (already processed)", a_ref->refID);
+				_MESSAGE("SFID hook: SKIP NPC %08X (all sections done)", a_ref->refID);
 				ThisStdCall(originalAddressNPC, a_ref);
 				return;
 			}
+
 			bool isCloned = IsClonedForm(base->refID);
-			_MESSAGE("SFID hook: PROCESS NPC %08X (isCloned=%d)", a_ref->refID, isCloned);
-			//Distribute keywords first
-			std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
-			for (SFIDResult keyword : keywordResult)
-			{
-				ProcessResult(keyword);
+			uint8_t& flags = manager->processedSections[a_ref->refID];
+			bool anyProcessed = false;
+
+			// Keywords（常に処理可能）
+			if (!(flags & kKeywords)) {
+				std::vector<SFIDResult> keywordResult =
+					manager->GetSingleSwapData(a_ref, base, "Keywords");
+				for (SFIDResult& kw : keywordResult) {
+					ProcessResult(kw);
+				}
+				flags |= kKeywords;
+				anyProcessed = true;
 			}
-			//Distribute factions second before the rest
-			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
-			for (SFIDResult faction : factionResult) {
-				ProcessResult(faction);
+
+			// Factions（常に処理可能）
+			if (!(flags & kFactions)) {
+				std::vector<SFIDResult> factionResult =
+					manager->GetSingleSwapData(a_ref, base, "Factions");
+				for (SFIDResult& fac : factionResult) {
+					ProcessResult(fac);
+				}
+				flags |= kFactions;
+				anyProcessed = true;
 			}
-			//Distribute factions and keywords again along with the rest
-			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base, isCloned);
-			for (std::vector<SFIDResult> result : resultVec) {
-				for (SFIDResult sfid : result) {
-					ProcessResult(sfid);
+
+			// Items & Equipment & Spells & Packages（非クローンのみ）
+			if (!isCloned) {
+				if (!(flags & kItems)) {
+					std::vector<SFIDResult> itemsResult =
+						manager->GetSingleSwapData(a_ref, base, "Items");
+					for (SFIDResult& item : itemsResult) {
+						ProcessResult(item);
+					}
+					flags |= kItems;
+					anyProcessed = true;
+				}
+				if (!(flags & kEquipment)) {
+					std::vector<SFIDResult> equipResult =
+						manager->GetSingleSwapData(a_ref, base, "Equipment");
+					for (SFIDResult& eq : equipResult) {
+						ProcessResult(eq);
+					}
+					flags |= kEquipment;
+					anyProcessed = true;
+				}
+				if (!(flags & kSpells)) {
+					std::vector<SFIDResult> spellsResult =
+						manager->GetSingleSwapData(a_ref, base, "Spells");
+					for (SFIDResult& sp : spellsResult) {
+						ProcessResult(sp);
+					}
+					flags |= kSpells;
+					anyProcessed = true;
+				}
+				if (!(flags & kPackages)) {
+					std::vector<SFIDResult> pkgResult =
+						manager->GetSingleSwapData(a_ref, base, "Packages");
+					for (SFIDResult& pkg : pkgResult) {
+						ProcessResult(pkg);
+					}
+					flags |= kPackages;
+					anyProcessed = true;
 				}
 			}
-			manager->processedForms.emplace(a_ref->refID);
+
+			// 全セクション完了したら processedForms にも追加（高速パス用）
+			if (flags == kAllSections) {
+				manager->processedForms.emplace(a_ref->refID);
+				_MESSAGE("SFID hook: NPC %08X all sections completed", a_ref->refID);
+			}
+			else if (anyProcessed) {
+				_MESSAGE("SFID hook: NPC %08X partial process (flags=%02X)",
+					a_ref->refID, flags);
+			}
+			else {
+				_MESSAGE("SFID hook: NPC %08X no new sections needed (flags=%02X)",
+					a_ref->refID, flags);
+			}
 		}
 		ThisStdCall(originalAddressNPC, a_ref);
 	}
@@ -321,35 +396,94 @@ namespace SpellFactionItemDistributor
 		if (const auto base = a_ref->baseForm)
 		{
 			manager->LoadFormsOnce();
-		if (manager->processedForms.contains(a_ref->refID))
-		{
-			ThisStdCall(originalAddressCREA, a_ref);
-			return;
-		}
-		bool isCloned = IsClonedForm(base->refID);
-		_MESSAGE("SFID hook: PROCESS CREA %08X (isCloned=%d)", a_ref->refID, isCloned);
-		//Distribute keywords first
-		std::vector<SFIDResult> keywordResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Keywords");
-			for (SFIDResult keyword : keywordResult)
+
+			// === 高速パス：全セクション完了済み ===
+			if (manager->processedForms.contains(a_ref->refID))
 			{
-				ProcessResult(keyword);
+				_MESSAGE("SFID hook: SKIP CREA %08X (all sections done)", a_ref->refID);
+				ThisStdCall(originalAddressCREA, a_ref);
+				return;
 			}
-			//Distribute factions second before the rest
-			std::vector<SFIDResult> factionResult = manager->GetSingleSwapData(a_ref, a_ref->baseForm, "Factions");
-			for (SFIDResult faction : factionResult)
-			{
-				ProcessResult(faction);
+
+			bool isCloned = IsClonedForm(base->refID);
+			uint8_t& flags = manager->processedSections[a_ref->refID];
+			bool anyProcessed = false;
+
+			// Keywords（常に処理可能）
+			if (!(flags & kKeywords)) {
+				std::vector<SFIDResult> keywordResult =
+					manager->GetSingleSwapData(a_ref, base, "Keywords");
+				for (SFIDResult& kw : keywordResult) {
+					ProcessResult(kw);
+				}
+				flags |= kKeywords;
+				anyProcessed = true;
 			}
-			//Distribute factions again along with the rest
-			std::vector<std::vector<SFIDResult>> resultVec = manager->GetAllSwapData(a_ref, base, isCloned);
-			for (std::vector<SFIDResult> result : resultVec)
-			{
-				for (SFIDResult sfid : result)
-				{
-					ProcessResult(sfid);
+
+			// Factions（常に処理可能）
+			if (!(flags & kFactions)) {
+				std::vector<SFIDResult> factionResult =
+					manager->GetSingleSwapData(a_ref, base, "Factions");
+				for (SFIDResult& fac : factionResult) {
+					ProcessResult(fac);
+				}
+				flags |= kFactions;
+				anyProcessed = true;
+			}
+
+			// Items & Equipment & Spells & Packages（非クローンのみ）
+			if (!isCloned) {
+				if (!(flags & kItems)) {
+					std::vector<SFIDResult> itemsResult =
+						manager->GetSingleSwapData(a_ref, base, "Items");
+					for (SFIDResult& item : itemsResult) {
+						ProcessResult(item);
+					}
+					flags |= kItems;
+					anyProcessed = true;
+				}
+				if (!(flags & kEquipment)) {
+					std::vector<SFIDResult> equipResult =
+						manager->GetSingleSwapData(a_ref, base, "Equipment");
+					for (SFIDResult& eq : equipResult) {
+						ProcessResult(eq);
+					}
+					flags |= kEquipment;
+					anyProcessed = true;
+				}
+				if (!(flags & kSpells)) {
+					std::vector<SFIDResult> spellsResult =
+						manager->GetSingleSwapData(a_ref, base, "Spells");
+					for (SFIDResult& sp : spellsResult) {
+						ProcessResult(sp);
+					}
+					flags |= kSpells;
+					anyProcessed = true;
+				}
+				if (!(flags & kPackages)) {
+					std::vector<SFIDResult> pkgResult =
+						manager->GetSingleSwapData(a_ref, base, "Packages");
+					for (SFIDResult& pkg : pkgResult) {
+						ProcessResult(pkg);
+					}
+					flags |= kPackages;
+					anyProcessed = true;
 				}
 			}
-			manager->processedForms.emplace(a_ref->refID);
+
+			// 全セクション完了したら processedForms にも追加（高速パス用）
+			if (flags == kAllSections) {
+				manager->processedForms.emplace(a_ref->refID);
+				_MESSAGE("SFID hook: CREA %08X all sections completed", a_ref->refID);
+			}
+			else if (anyProcessed) {
+				_MESSAGE("SFID hook: CREA %08X partial process (flags=%02X)",
+					a_ref->refID, flags);
+			}
+			else {
+				_MESSAGE("SFID hook: CREA %08X no new sections needed (flags=%02X)",
+					a_ref->refID, flags);
+			}
 		}
 		ThisStdCall(originalAddressCREA, a_ref);
 	}
