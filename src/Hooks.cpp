@@ -238,7 +238,7 @@ namespace SpellFactionItemDistributor
 				AddSingleSpell(a_ref, formToAdd);
 				break;
 			case (FormType::kFormType_LeveledSpell):
-				AddSingleSpell(a_ref, formToAdd);
+				AddLevSpell(a_ref, formToAdd);
 				break;
 			case (FormType::kFormType_Package):
 				AddPackage(a_ref, formToAdd);
