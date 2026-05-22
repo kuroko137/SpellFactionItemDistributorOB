@@ -1,6 +1,7 @@
 #include "Manager.h"
 #include "EditorIDMapper/EditorIDMapperAPI.h"
 #include "OBSEKeywords/KeywordAPI.h"
+#include "obse/GameAPI.h"
 #include "fstream"
 #include "lib/boost/trim.hpp"
 
@@ -615,6 +616,71 @@ namespace SpellFactionItemDistributor
 		return cond.isExclusion ? !match : match;
 	}
 
+	static bool HasKeywordStats(TESObjectREFR* ref,
+		const CompiledCondition& cond)
+	{
+		if (!ref || !ref->baseForm)
+			return false;
+
+		float val;
+		if (cond.formID == kActorVal_BaseLevel) {
+			auto* actorBase = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
+			if (!actorBase)
+				return false;
+			val = static_cast<float>(actorBase->actorBaseData.level);
+		}
+		else if (cond.formID == kActorVal_ActualLevel) {
+			auto* actorBase = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
+			if (!actorBase)
+				return false;
+			SInt16 level = actorBase->actorBaseData.level;
+			if (actorBase->actorBaseData.flags & TESActorBaseData::kFlag_PCLevelOffset) {
+				if (auto* player = *g_thePlayer) {
+					auto* playerBase = OBLIVION_CAST(player->baseForm, TESForm, TESActorBase);
+					if (playerBase) {
+						level += playerBase->actorBaseData.level;
+						if (level < actorBase->actorBaseData.minLevel)
+							level = actorBase->actorBaseData.minLevel;
+						if (level > actorBase->actorBaseData.maxLevel)
+							level = actorBase->actorBaseData.maxLevel;
+					}
+				}
+			}
+			val = static_cast<float>(level);
+		}
+		else {
+			auto* actor = OBLIVION_CAST(ref, TESObjectREFR, Actor);
+			if (!actor)
+				return false;
+			val = static_cast<float>(actor->GetBaseActorValue(cond.formID));
+		}
+
+		bool match = false;
+		switch (cond.compareOp)
+		{
+		case CompareOp::GE:
+			match = (val >= cond.threshold);
+			break;
+		case CompareOp::LE:
+			match = (val <= cond.threshold);
+			break;
+		case CompareOp::GT:
+			match = (val > cond.threshold);
+			break;
+		case CompareOp::LT:
+			match = (val < cond.threshold);
+			break;
+		case CompareOp::EQ:
+			match = (val == cond.threshold);
+			break;
+		case CompareOp::NE:
+			match = (val != cond.threshold);
+			break;
+		}
+
+		return cond.isExclusion ? !match : match;
+	}
+
 	bool IsValid(const CompiledCondition& cond,
 		TESObjectREFR* ref)
 	{
@@ -661,6 +727,9 @@ namespace SpellFactionItemDistributor
 
 		case ConditionType::Trait:
 			return HasKeywordTrait(ref, cond);
+
+		case ConditionType::Stats:
+			return HasKeywordStats(ref, cond);
 
 		default:
 			return false;
@@ -740,6 +809,55 @@ namespace SpellFactionItemDistributor
 		else if (typeStr == "keyword")      compiled.type = ConditionType::Keyword;
 		else if (typeStr == "trait")       compiled.type = ConditionType::Trait;
 		else if (typeStr == "actortype")   compiled.type = ConditionType::ActorType;
+		else if (typeStr == "stats") {
+			compiled.type = ConditionType::Stats;
+
+			auto opPos = valueStr.find_first_of(">=<!");
+			if (opPos == std::string::npos) {
+				_ERROR("Stats condition missing operator: %s", rawCondition.c_str());
+				return compiled;
+			}
+
+			std::string avName = valueStr.substr(0, opPos);
+			boost::trim(avName);
+
+			std::string opStr;
+			if (opPos + 1 < valueStr.size() && valueStr[opPos + 1] == '=') {
+				opStr = valueStr.substr(opPos, 2);
+			}
+			else {
+				opStr = valueStr.substr(opPos, 1);
+			}
+
+			std::string thresholdStr = valueStr.substr(opPos + opStr.size());
+			boost::trim(thresholdStr);
+
+			if (avName == "baselevel") {
+				compiled.formID = kActorVal_BaseLevel;
+			}
+			else if (avName == "level") {
+				compiled.formID = kActorVal_ActualLevel;
+			}
+			else {
+				compiled.formID = GetActorValueForString(avName.c_str());
+				if (compiled.formID >= kActorVal_OblivionMax) {
+					_ERROR("Stats condition unknown actor value: %s", avName.c_str());
+					return compiled;
+				}
+			}
+
+			if (opStr == ">=") compiled.compareOp = CompareOp::GE;
+			else if (opStr == "<=") compiled.compareOp = CompareOp::LE;
+			else if (opStr == ">")  compiled.compareOp = CompareOp::GT;
+			else if (opStr == "<")  compiled.compareOp = CompareOp::LT;
+			else if (opStr == "==") compiled.compareOp = CompareOp::EQ;
+			else if (opStr == "!=") compiled.compareOp = CompareOp::NE;
+
+			compiled.threshold = string::to_num<float>(thresholdStr);
+			compiled.text.clear();
+
+			return compiled;
+		}
 		else                            compiled.type = ConditionType::EditorID;
 
 		if (UInt32 id = DistributeRecordData::GetFormID(valueStr.c_str()); id != 0)

@@ -25,6 +25,9 @@ namespace SpellFactionItemDistributor
 	};
 	static constexpr uint8_t kAllSections = 0x3F;
 
+	static constexpr UInt32 kActorVal_BaseLevel = static_cast<UInt32>(-1);
+	static constexpr UInt32 kActorVal_ActualLevel = static_cast<UInt32>(-2);
+
 	enum class ConditionType
 	{
 		EditorID,
@@ -40,7 +43,18 @@ namespace SpellFactionItemDistributor
 		Keyword,
 		ActorType,
 		Trait,
+		Stats,
 		All
+	};
+
+	enum class CompareOp : uint8_t
+	{
+		GE,
+		LE,
+		GT,
+		LT,
+		EQ,
+		NE
 	};
 
 	struct CompiledCondition
@@ -49,6 +63,8 @@ namespace SpellFactionItemDistributor
 		UInt32 formID;
 		std::string text;
 		bool isExclusion;
+		CompareOp compareOp{ CompareOp::GE };
+		float threshold{ 0.0f };
 	};
 
 	struct ConditionalEntry
@@ -63,7 +79,9 @@ namespace SpellFactionItemDistributor
 		return lhs.type == rhs.type &&
 			lhs.formID == rhs.formID &&
 			lhs.text == rhs.text &&
-			lhs.isExclusion == rhs.isExclusion;
+			lhs.isExclusion == rhs.isExclusion &&
+			lhs.compareOp == rhs.compareOp &&
+			lhs.threshold == rhs.threshold;
 	}
 
 	using ConditionalEntryVec = std::vector<ConditionalEntry>;
