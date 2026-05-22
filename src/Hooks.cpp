@@ -126,9 +126,11 @@ namespace SpellFactionItemDistributor
 		TESLeveledList* lev = OBLIVION_CAST(form, TESForm, TESLeveledList);
 		TESForm* newForm = lev->CalcElement(level, true, maxLevel - minLevel);
 		SpellItem* spell = OBLIVION_CAST(newForm, TESForm, SpellItem);
-		if (spell && HasSpell(npc, spell))
+		if (!spell)
 			return;
-		ThisStdCall(0x46F350, &(npc->spellList), TESSpellList::kModified_BaseSpellList);
+		if (HasSpell(npc, spell))
+			return;
+		ThisStdCall(0x46F350, &(npc->spellList), spell);
 		ThisStdCall(0x46ABF0, ref, TESSpellList::kModified_BaseSpellList);
 		ThisStdCall(0x46ABF0, ref->baseForm, TESSpellList::kModified_BaseSpellList);
 	}
