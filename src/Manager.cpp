@@ -622,7 +622,7 @@ namespace SpellFactionItemDistributor
 		if (!ref || !ref->baseForm)
 			return false;
 
-		float val;
+		float val = 0.0f;
 		if (cond.formID == kActorVal_BaseLevel) {
 			auto* actorBase = OBLIVION_CAST(ref->baseForm, TESForm, TESActorBase);
 			if (!actorBase)
@@ -850,7 +850,7 @@ namespace SpellFactionItemDistributor
 			else if (opStr == "<=") compiled.compareOp = CompareOp::LE;
 			else if (opStr == ">")  compiled.compareOp = CompareOp::GT;
 			else if (opStr == "<")  compiled.compareOp = CompareOp::LT;
-			else if (opStr == "==") compiled.compareOp = CompareOp::EQ;
+			else if (opStr == "=" || opStr == "==") compiled.compareOp = CompareOp::EQ;
 			else if (opStr == "!=") compiled.compareOp = CompareOp::NE;
 
 			compiled.threshold = string::to_num<float>(thresholdStr);

@@ -147,7 +147,7 @@ namespace SpellFactionItemDistributor
 		const auto formPair = string::split(a_str, "|");
 		
 		if (formPair[0] == "ALL") {
-			UInt32 baseFormID;
+			UInt32 baseFormID = 0xFFFFFFFF;
 			if (const auto swapFormID = GetSwapFormID(formPair[1]); !swap_empty(swapFormID)) {
 
 				const Input input(
