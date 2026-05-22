@@ -147,12 +147,17 @@ namespace SpellFactionItemDistributor
 		TESPackage* package = dynamic_cast<TESPackage*>(form);
 		if (!npc || !package || HasPackage(npc, package))
 			return;
-		TESAIForm::PackageEntry* newPackageData = (TESAIForm::PackageEntry*)FormHeap_Allocate(sizeof(TESAIForm::PackageEntry));
-		newPackageData->package = package;
-		newPackageData->next = nullptr;
-		TESAIForm::PackageEntry* last = &npc->aiForm.packageList;
-		while (last->next) last = last->next;
-		last->next = newPackageData;
+
+		if (!npc->aiForm.packageList.package) {
+			npc->aiForm.packageList.package = package;
+		} else {
+			TESAIForm::PackageEntry* newPackageData = (TESAIForm::PackageEntry*)FormHeap_Allocate(sizeof(TESAIForm::PackageEntry));
+			newPackageData->package = package;
+			newPackageData->next = nullptr;
+			TESAIForm::PackageEntry* last = &npc->aiForm.packageList;
+			while (last->next) last = last->next;
+			last->next = newPackageData;
+		}
 		ThisStdCall(0x46ABF0, ref, TESAIForm::kModified_BaseAIData);
 	}
 
