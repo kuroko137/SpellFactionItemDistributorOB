@@ -75,6 +75,23 @@ Adds the flames spell to any NPC whose Class contains "Mage" and any NPC in the 
 [Spells|Class:Mage,Faction:0x4D16F~Oblivion.esm]
 ALL|0x3C405~Oblivion.esm
 
+ActorType, Trait, and Stats
+ActorType distinguishes between NPCs and creatures. Use "NPC" or "Creature".
+Trait checks built-in NPC properties: Female, Male, Unique, Summonable, Leveled, TeamMate, or Dead.
+Stats checks numeric actor values using comparison operators (>=, <=, >, <, =, !=). Supported fields include "Level" (actual level with PC offset), "BaseLevel" (base record level), or any base actor value name such as Strength, Intelligence, Speed, etc.
+
+Adds Immunity to Paralysis ability to any actor that is level 30 or higher, or has 500 or more health.
+[Spells|Stats:Level>=30,Stats:Health>=500]
+ALL|0x143F09~Oblivion.esm|amount(1)
+
+Adds gold to any creature whose EditorID contains "Boss".
+[Items|EditorID:Boss&ActorType:Creature]
+ALL|0x00000F~Oblivion.esm|amount(300)
+
+Adds all unique NPCs (non-respawning, non-dynamic) to the Imperial Legion faction.
+[Factions|Trait:Unique]
+ALL|0x18B117~Oblivion.esm
+
 I hope these examples give you some idea of the possible uses for this mod and I looked forward to seeing what you guys can come up with! 
 
 Keep an eye out for my SFID Integrations, similar to my BOS Integrations!
